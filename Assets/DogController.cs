@@ -50,8 +50,8 @@ public class DogLooksAtPlayer : State
 
     public override void Think()
     {
-        Vector3 dist = owner.GetComponent<Boid>().player.transform.position - owner.transform.position;
-        owner.transform.rotation = Quaternion.Slerp(owner.transform.rotation, Quaternion.LookRotation(dist), Time.deltaTime);
+        Vector3 distance = owner.GetComponent<Boid>().player.transform.position - owner.transform.position;
+        owner.transform.rotation = Quaternion.Slerp(owner.transform.rotation, Quaternion.LookRotation(distance), Time.deltaTime);
 
         if (Vector3.Distance(owner.GetComponent<Boid>().ball.transform.position, owner.GetComponent<Boid>().player.transform.position) > 10)
         {
