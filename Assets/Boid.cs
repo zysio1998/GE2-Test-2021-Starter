@@ -4,108 +4,193 @@ using UnityEngine;
 
 public class Boid : MonoBehaviour
 {
-    List<SteeringBehaviour> behaviours = new List<SteeringBehaviour>();
 
-    public Vector3 force = Vector3.zero;
-    public Vector3 acceleration = Vector3.zero;
-    public Vector3 velocity = Vector3.zero;
+    public Vector3 velocity;
+    public float speed;
+    public Vector3 acceleration;
+    public Vector3 force;
+    public float maxSpeed = 5;
+    public float maxForce = 10;
+
     public float mass = 1;
 
-    [Range(0.0f, 10.0f)]
-    public float damping = 0.01f;
+    public bool seekEnabled = true;
+    public Transform seekTargetTransform;
+    public Vector3 seekTarget;
 
-    [Range(0.0f, 1.0f)]
+    public bool arriveEnabled = false;
+    public Transform arriveTargetTransform;
+    public Vector3 arriveTarget;
+    public float slowingDistance = 80;
+
+    public Path path;
+    public bool pathFollowingEnabled = false;
+    public float waypointDistance = 3;
+
+    // Banking
     public float banking = 0.1f;
-    public float maxSpeed = 5.0f;
-    public float maxForce = 10.0f;
-    
+
+    public float damping = 0.1f;
+
+    public bool playerSteeringEnabled = false;
+    public float steeringForce = 100;
+
+    public bool pursueEnabled = false;
+    public Boid pursueTarget;
+
+    public Vector3 pursueTargetPos;
+
+    public Vector3 Pursue(Boid pursueTarget)
+    {
+        float dist = Vector3.Distance(pursueTarget.transform.position, transform.position);
+
+        float time = dist / maxSpeed;
+
+        pursueTargetPos = pursueTarget.transform.position + pursueTarget.velocity * time;
+
+        return Seek(pursueTargetPos);
+    }
 
 
-    // Use this for initialization
+    public void OnDrawGizmos()
+    {
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawLine(transform.position, transform.position + velocity);
+
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + acceleration);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, transform.position + force * 10);
+
+        if (arriveEnabled)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(arriveTargetTransform.position, slowingDistance);
+        }
+
+        if (pursueEnabled)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(transform.position, pursueTargetPos);
+        }
+
+    }
+
+    // Start is called before the first frame update
     void Start()
     {
 
-        SteeringBehaviour[] behaviours = GetComponents<SteeringBehaviour>();
-
-        foreach (SteeringBehaviour b in behaviours)
-        {
-            this.behaviours.Add(b);
-        }
     }
 
-    public Vector3 SeekForce(Vector3 target)
+    public Vector3 PlayerSteering()
     {
-        Vector3 desired = target - transform.position;
-        desired.Normalize();
-        desired *= maxSpeed;
-        return desired - velocity;
-    }
+        Vector3 force = Vector3.zero;
 
-    public Vector3 ArriveForce(Vector3 target, float slowingDistance = 15.0f)
-    {
-        Vector3 toTarget = target - transform.position;
+        force += Input.GetAxis("Vertical") * transform.forward * steeringForce;
 
-        float distance = toTarget.magnitude;
-        if (distance < 0.1f)
-        {
-            return Vector3.zero;
-        }
-        float ramped = maxSpeed * (distance / slowingDistance);
+        Vector3 projectedRight = transform.right;
+        projectedRight.y = 0;
+        projectedRight.Normalize();
 
-        float clamped = Mathf.Min(ramped, maxSpeed);
-        Vector3 desired = clamped * (toTarget / distance);
-
-        return desired - velocity;
-    }
-
-
-    Vector3 Calculate()
-    {
-        force = Vector3.zero;
-
-        // Weighted prioritised truncated running sum
-        // 1. Behaviours are weighted
-        // 2. Behaviours are prioritised
-        // 3. Truncated
-        // 4. Running sum
-
-
-        foreach (SteeringBehaviour b in behaviours)
-        {
-            if (b.isActiveAndEnabled)
-            {
-                force += b.Calculate() * b.weight;
-
-                float f = force.magnitude;
-                if (f >= maxForce)
-                {
-                    force = Vector3.ClampMagnitude(force, maxForce);
-                    break;
-                }
-            }
-        }
+        force += Input.GetAxis("Horizontal") * projectedRight * steeringForce * 0.2f;
 
         return force;
     }
 
+    public Vector3 PathFollow()
+    {
+        Vector3 nextWaypoint = path.NextWaypoint();
+        if (!path.looped && path.IsLast())
+        {
+            return Arrive(nextWaypoint);
+        }
+        else
+        {
+            if (Vector3.Distance(transform.position, nextWaypoint) < waypointDistance)
+            {
+                path.AdvanceToNext();
+            }
+            return Seek(nextWaypoint);
+        }
+    }
+
+    public Vector3 Seek(Vector3 target)
+    {
+        Vector3 toTarget = target - transform.position;
+        Vector3 desired = toTarget.normalized * maxSpeed;
+
+        return (desired - velocity);
+    }
+
+    public Vector3 Arrive(Vector3 target)
+    {
+        Vector3 toTarget = target - transform.position;
+        float dist = toTarget.magnitude;
+        float ramped = (dist / slowingDistance) * maxSpeed;
+        float clamped = Mathf.Min(ramped, maxSpeed);
+        Vector3 desired = (toTarget / dist) * clamped;
+
+        return desired - velocity;
+    }
+
+    public Vector3 CalculateForce()
+    {
+        Vector3 f = Vector3.zero;
+        if (seekEnabled)
+        {
+            if (seekTargetTransform != null)
+            {
+                seekTarget = seekTargetTransform.position;
+            }
+            f += Seek(seekTarget);
+        }
+
+        if (arriveEnabled)
+        {
+            if (arriveTargetTransform != null)
+            {
+                arriveTarget = arriveTargetTransform.position;
+            }
+            f += Arrive(arriveTarget);
+        }
+
+        if (pathFollowingEnabled)
+        {
+            f += PathFollow();
+        }
+
+        if (playerSteeringEnabled)
+        {
+            f += PlayerSteering();
+        }
+
+        if (pursueEnabled)
+        {
+            f += Pursue(pursueTarget);
+        }
+
+        return f;
+    }
 
     // Update is called once per frame
     void Update()
     {
-        force = Calculate();
-        Vector3 newAcceleration = force / mass;
-        acceleration = Vector3.Lerp(acceleration, newAcceleration, Time.deltaTime);
-        velocity += acceleration * Time.deltaTime;
-
-        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
-
-        if (velocity.magnitude > float.Epsilon)
+        force = CalculateForce();
+        acceleration = force / mass;
+        velocity = velocity + acceleration * Time.deltaTime;
+        transform.position = transform.position + velocity * Time.deltaTime;
+        speed = velocity.magnitude;
+        if (speed > 0)
         {
+            //transform.forward = velocity;
+
             Vector3 tempUp = Vector3.Lerp(transform.up, Vector3.up + (acceleration * banking), Time.deltaTime * 3.0f);
             transform.LookAt(transform.position + velocity, tempUp);
+            //velocity *= 0.9f;
 
-            transform.position += velocity * Time.deltaTime;
-            velocity *= (1.0f - (damping * Time.deltaTime));
+            // Remove 10% of the velocity every second
+            velocity -= (damping * velocity * Time.deltaTime);
         }
     }
 }

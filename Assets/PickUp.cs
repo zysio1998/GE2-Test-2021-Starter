@@ -8,7 +8,7 @@ public class PickUp : MonoBehaviour
     Vector3 objectsPosition;
     public bool canHold = true;
     public bool isHolding = false;
-    public GameObject ball;
+    public GameObject target;
     public GameObject temp;   
     
 
@@ -24,25 +24,25 @@ public class PickUp : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             isHolding = true;
-            ball.GetComponent<Rigidbody>().useGravity = false;
+            target.GetComponent<Rigidbody>().useGravity = false;
         }
 
         if (isHolding ==true)
-        {            
-            ball.transform.SetParent(temp.transform);
+        {
+            target.transform.SetParent(temp.transform);
 
             if(Input.GetKey(KeyCode.Space))
             {
-                ball.GetComponent<Rigidbody>().AddForce(temp.transform.forward * throwForce);
+                target.GetComponent<Rigidbody>().AddForce(temp.transform.forward * throwForce);
                 isHolding = false;
             }
         }
         else
         {
-            objectsPosition = ball.transform.position;
-            ball.transform.SetParent(null);
-            ball.GetComponent<Rigidbody>().useGravity = true;
-            ball.transform.position = objectsPosition;
+            objectsPosition = target.transform.position;
+            target.transform.SetParent(null);
+            target.GetComponent<Rigidbody>().useGravity = true;
+            target.transform.position = objectsPosition;
         }
     }   
 }

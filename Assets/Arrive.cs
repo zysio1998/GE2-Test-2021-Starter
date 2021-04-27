@@ -11,9 +11,17 @@ public class Arrive : SteeringBehaviour
 
     public GameObject targetGameObject = null;
 
+    public void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, transform.position + force * 100);
+        //Gizmos.DrawSphere(transform.position, 10);
+    }
+
     public override Vector3 Calculate()
     {
-        return boid.ArriveForce(targetPosition, slowingDistance);
+        Vector3 force = boid.Arrive(targetPosition);
+        return force;
     }
 
     public void Update()

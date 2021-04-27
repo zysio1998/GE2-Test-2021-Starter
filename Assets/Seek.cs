@@ -7,7 +7,6 @@ using UnityEngine;
 public class Seek : SteeringBehaviour
 {
     public GameObject targetGameObject = null;
-
     public Vector3 target = Vector3.zero;
 
     public void OnDrawGizmos()
@@ -22,10 +21,10 @@ public class Seek : SteeringBehaviour
             Gizmos.DrawLine(transform.position, target);
         }
     }
-
+    
     public override Vector3 Calculate()
     {
-        return boid.SeekForce(target);
+        return boid.Seek(target);    
     }
 
     public void Update()
