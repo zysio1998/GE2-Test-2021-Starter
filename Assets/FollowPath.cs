@@ -10,37 +10,27 @@ public class FollowPath : SteeringBehaviour
 
     Vector3 nextWaypoint;
 
-    public float waypointDistance = 5;
-
-    public void OnDrawGizmos()
-    {
-        if (isActiveAndEnabled && Application.isPlaying)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(transform.position, nextWaypoint);
-        }
-    }
-
     public void Start()
     {
 
     }
 
+
     public override Vector3 Calculate()
     {
         nextWaypoint = path.NextWaypoint();
-        if (Vector3.Distance(transform.position, nextWaypoint) < waypointDistance)
+        if (Vector3.Distance(transform.position, nextWaypoint) < 3)
         {
             path.AdvanceToNext();
         }
 
         if (!path.looped && path.IsLast())
         {
-            return boid.Arrive(nextWaypoint);
+            return boid.ArriveForce(nextWaypoint, 20);
         }
         else
         {
-            return boid.Seek(nextWaypoint);
+            return boid.SeekForce(nextWaypoint);
         }
     }
 }
